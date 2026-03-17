@@ -1,0 +1,80 @@
+project:
+  name: "israel_flood_forecasting"
+  description: "Operational flood forecasting using ICON ensemble forecasts and a two-stage LSTM hydrological model."
+
+data_paths:
+  basin_folder: "/media/data-nvme/Darga_28_for_test_only"
+  # Raw ICON model output directory (NetCDF or gridded fields)
+  icon_raw_dir: "/media/data-nvme/Darga_28_for_test_only/raw/icon"
+  icon_forecasts_dir: "/media/data-nvme/Darga_28_for_test_only/output/rain/icon_forecasts"
+  ugrid_parquet_path: "/media/data-nvme/Darga_28_for_test_only/output/ugrid/ugrid_cells_with_terrain.parquet"
+  ugrid_output_dir: "/media/data-nvme/Darga_28_for_test_only/output/ugrid"
+  dem_output_dir: "/media/data-nvme/Darga_28_for_test_only/output/dem_output"
+  discharge_output_dir: "/media/data-nvme/Darga_28_for_test_only/output/discharge"
+  hydrograph_output_dir: "/media/data-nvme/Darga_28_for_test_only/output/hydrographs"
+  station_metadata_path: "/media/data-nvme/Q need update!!!/Q_stations_metadata.xlsx"
+  icon_predictions_export_dir: "/media/data-nvme/Darga_28_for_test_only/output/icon_predictions/predictions_export"
+  # UGRID / terrain inputs
+  streams_path: "/media/data-nvme/Darga_28_for_test_only/streams_clipped.shp"
+  info_path: "/media/data-nvme/Darga_28_for_test_only/info.txt"
+  dem_input_path: "/media/data-nvme/Darga_28_for_test_only/clipped_dem/DEM_clip_4326_100m_buffer.tif"
+
+stations:
+  station_cells: [24954, 28538]
+  station_names:
+    "24954": "Station 24954"
+    "28538": "Station 28538"
+
+model:
+  seq_len: 24
+  embed_dim: 32
+  stage1_binary:
+    hidden_size: 256          # HIDDEN_SIZE_S1
+    num_layers: 2             # NUM_LAYERS
+    dropout: 0.2              # DROPOUT
+  stage2_regression:
+    hidden_size: 128          # HIDDEN_SIZE_S2
+    num_layers: 2             # NUM_LAYERS
+    dropout: 0.2              # DROPOUT
+  checkpoints:
+    stage1_path: "/media/data-nvme/Darga_28_for_test_only/output/model/TWO_STAGE_STAGE1_HYDROGRAPH/stage1_binary_classifier_hydrograph.pt"
+    stage2_path: "/media/data-nvme/Darga_28_for_test_only/output/model/LSTM_IMPROVED/improved_lstm_model.pt"
+
+training:
+  batch_size: 32              # BATCH_SIZE
+  max_epochs: 50              # EPOCHS
+  learning_rate: 1.0e-4       # LR
+  early_stopping_patience: 7  # EARLY_STOP_PATIENCE
+  lr_scheduler:
+    patience: 5               # LR_PATIENCE
+    factor: 0.5               # LR_FACTOR
+    min_lr: 1.0e-6            # LR_MIN
+
+features:
+  terrain_features:
+    - "DEM_MEAN"
+    - "SLOPE_MEAN"
+    - "ASPECT_MEAN"
+    - "FLOWACC_MEAN"
+    - "FLOWDIR_MEAN"
+    - "RUGGED_MEAN"
+    - "AREA_2M"
+  # Dynamic features are inferred from training checkpoints (feature_cols_s1, feature_cols_s2)
+
+inference:
+  discharge_threshold_m3s: 0.01           # DISCHARGE_THRESHOLD, EVENT_THRESHOLD
+  rain_context_hours: 12                  # RAIN_CONTEXT_HOURS
+  min_event_duration_timesteps: 6         # MIN_EVENT_DURATION
+  binary_probability_threshold: 0.5       # BINARY_THRESHOLD (for evaluation only)
+  use_probabilistic_combination: true     # Q_final = P_event × Q_stage2
+
+ui:
+  default_alert_prob_threshold: 0.6
+  map_center_lat: 31.5
+  map_center_lon: 35.0
+  map_zoom_start: 8
+
+logging:
+  level: "INFO"
+  log_to_file: true
+  log_dir: "/media/data-nvme/Darga_28_for_test_only/output/model/TWO_STAGE_COMBINED_HYDROGRAPH/monitoring"

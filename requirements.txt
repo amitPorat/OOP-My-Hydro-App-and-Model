@@ -1,0 +1,15 @@
+numpy
+pandas
+geopandas
+xarray
+pyarrow
+netCDF4
+torch
+torchvision
+torchaudio
+pyyaml
+streamlit
+plotly
+folium
+scipy
+scikit-learn
